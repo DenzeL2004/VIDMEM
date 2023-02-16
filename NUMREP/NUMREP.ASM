@@ -53,7 +53,7 @@ Start:
 	
 	SET_MEMADRESS
 
-	mov ax, 60123d		;set val to register ax
+	mov ax, 1000d		;set val to register ax
 	mov di, SIZE_VIDMEM_LINE * 1d	;third line in video mem
 	call DecRep
 
@@ -151,9 +151,9 @@ Start:
 	;-----------------------------------------------------------------
 	DecRep	proc
 
-		push bp
-		mov bp, sp
-		sub sp, 2d 		     ;local var
+		push bp  		;save bp to stack
+ 		mov bp, sp
+		sub sp, 2d 		 ;local var
 
 		quotient equ word ptr [bp-2] ;local var 'quotient'
 
@@ -179,7 +179,7 @@ Start:
 			div cx			;dx:ax div cx (cx / 10)	|
 			mov cx, ax 		;save quotient to cx
 
-		cmp quotient, 0d
+		cmp cx, 0d
 		jne @@next
 
 		mov word ptr es:[di], COLOR_FRAME or 'd' ;set 'd' sumbol to video mem
