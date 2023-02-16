@@ -106,12 +106,7 @@ Start:
 				mov word ptr es:[bx], EMTY_CHAR	;set in video mem 'space'
 				add bx, 2d 						;increse bx pointer
 
-			inc cl 			;cl += 1
-			
-			mov dl, cl
-			mov dh, byte ptr [bp+6]
-			sub dh, dl
-
+			inc cl 					;cl += 1
 			cmp byte ptr [wp], cl   ;check out condition 'loopXY'
 			jne @@loopXC
 
@@ -123,8 +118,8 @@ Start:
 			add bx, SIZE_VIDMEM_LINE 	;shift to next line in video mem
 
 
-		inc ch 	;ch += 1
-		cmp byte ptr [hp], ch 		;check out condition 'loopCY'
+		inc ch 					;ch += 1
+		cmp byte ptr [hp], ch   ;check out condition 'loopCY'
 		jne @@loopYC		
 
 
