@@ -36,14 +36,14 @@ Exit	macro code
 ;-----------------------------------------------------------------
 ;Entrt: nope
 ;Exit: es
-;Destroy: bx
+;Destroy: di
 ;-----------------------------------------------------------------
 
 SET_MEMADRESS	macro
 				NOPE
 
-				mov bx, VIDMEM_ADR		;video memory address
-				mov es, bx
+				mov di, VIDMEM_ADR		;video memory address
+				mov es, di
 
 				NOPE
 				endm
@@ -54,15 +54,15 @@ Start:
 	SET_MEMADRESS
 
 	mov ax, 60123d		;set val to register ax
-	mov bx, SIZE_VIDMEM_LINE * 1d	;third line in video mem
+	mov di, SIZE_VIDMEM_LINE * 1d	;third line in video mem
 	call DecRep
 
 	mov ax, 10100001110001b		    ;set val to register ax
-	mov bx, SIZE_VIDMEM_LINE * 2d	;third line in video mem
+	mov di, SIZE_VIDMEM_LINE * 2d	;third line in video mem
 	call BinRep
 
 	mov ax, 0F23Ch					;set val to register ax
-	mov bx, SIZE_VIDMEM_LINE * 3d	;third line in video mem
+	mov di, SIZE_VIDMEM_LINE * 3d	;third line in video mem
 	call HexRep
 
 	Exit 0
@@ -71,9 +71,9 @@ Start:
 	;binary representation of a number
 	;-----------------------------------------------------------------
 	;Assumes: es = VIDMEM_ADR
-	;Entry: ax (input number), bx (address in video mem)
+	;Entry: ax (input number), di (address in video mem)
 	;Exit: none
-	;Destroy: bx, cx, dx
+	;Destroy: di, cx, dx
 	;-----------------------------------------------------------------
 	BinRep	proc
 
@@ -88,15 +88,15 @@ Start:
 			or dx, COLOR_FRAME		;define color frame and color symbol
 			or dl, '0'				;suppose cur byte is zero
 
-			mov word ptr es:[bx], dx	;set cur sumbol to video mem
-			add bx, 2d 					;increse bx pointere
+			mov word ptr es:[di], dx	;set cur sumbol to video mem
+			add di, 2d 					;increse di pointere
 
 			dec cl 						;decrease counter by 1
 			
 		cmp cx, 0d
 		jne @@next
 
-		mov word ptr es:[bx], COLOR_FRAME or 'b'	;set 'b' sumbol to video mem<-|
+		mov word ptr es:[di], COLOR_FRAME or 'b'	;set 'b' sumbol to video mem<-|
 
 		ret
 	BinRep	endp
@@ -105,9 +105,9 @@ Start:
 	;hex representation of a number
 	;-----------------------------------------------------------------
 	;Assumes: es = VIDMEM_ADR
-	;Entry: ax (input number), bx (address in video mem)
+	;Entry: ax (input number), di (address in video mem)
 	;Exit: none
-	;Destroy: bx, cx, dx
+	;Destroy: di, cx, dx
 	;-----------------------------------------------------------------
 	HexRep	proc
 
@@ -130,13 +130,13 @@ Start:
 			@@isNum:
 				
 			or dx, COLOR_FRAME			;define color frame and color symbol
-			mov word ptr es:[bx], dx	;set cur sumbol to video mem
-			add bx, 2d 					;increse bx pointere
+			mov word ptr es:[di], dx	;set cur sumbol to video mem
+			add di, 2d 					;increse di pointere
 
 		cmp cl, 0d
 		jne @@next
 
-		mov word ptr es:[bx], COLOR_FRAME or 'h'		;set 'h' sumbol to video mem<-|
+		mov word ptr es:[di], COLOR_FRAME or 'h'		;set 'h' sumbol to video mem<-|
 
 		ret
 	HexRep	endp
@@ -145,7 +145,7 @@ Start:
 	;Deс representation of a number
 	;-----------------------------------------------------------------
 	;Assumes: es = VIDMEM_ADR
-	;Entry: ax (input number), bx (address in video mem)
+	;Entry: ax (input number), di (address in video mem)
 	;Exit: none
 	;Destroy: ax, cx, dx
 	;-----------------------------------------------------------------
@@ -167,8 +167,8 @@ Start:
 			
 			or al, '0'
 			or ax, COLOR_FRAME
-			mov word ptr es:[bx], ax	;set symbol to video mem
-			add bx, 2d 					;increse bx pointere
+			mov word ptr es:[di], ax	;set symbol to video mem
+			add di, 2d 					;increse di pointere
 
 			mov quotient, dx
 
@@ -182,7 +182,7 @@ Start:
 		cmp quotient, 0d
 		jne @@next
 
-		mov word ptr es:[bx], COLOR_FRAME or 'd' ;set 'd' sumbol to video mem
+		mov word ptr es:[di], COLOR_FRAME or 'd' ;set 'd' sumbol to video mem
 
 		mov sp, bp 		;abandoning the place of local variables
 		pop bp 			;bp recovery
