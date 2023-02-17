@@ -5,7 +5,6 @@ org 100h
 locals @@
 
 
-
 MIDDLE_SCREEN 	 equ 80d * 2d * 12d + 40d * 2d
 SIZE_VIDMEM_LINE equ 80d * 2d
 VIDMEM_ADR 	  	 equ 0B800h
@@ -173,7 +172,7 @@ Start:
 			mov quotient, dx
 
 			mov ax, cx		;ax = 10^i
-			mov dx, 0d 		;
+			xor dx, 0d 		;clear dx
 
 			mov cx, 10d 	;-----------------------+
 			div cx			;dx:ax div cx (cx / 10)	|

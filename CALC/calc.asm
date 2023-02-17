@@ -185,7 +185,7 @@ Start:
 			mov quotient, dx
 
 			mov ax, cx		;ax = 10^i
-			mov dx, 0d 		;
+			xor dx, dx 		;
 
 			mov cx, 10d 	;-----------------------+
 			div cx			;dx:ax div cx (cx / 10)	|

@@ -99,7 +99,7 @@ Start:
 	push 40d ;argument xc 
 	push 2d ;argument yc
 
-	push 30d ;argument wp
+	push 10d ;argument wp
 	push 10d ;argument hp		
 
 	call DrawFrame
@@ -134,29 +134,40 @@ Start:
 
 		call ClearFrame
 
-		shl byte ptr [wp], 1d
-		shl byte ptr [hp], 1d
+		shl byte ptr [wp], 1d 		;wp * 2
+		shl byte ptr [hp], 1d 		;hp * 2
 
-		shl byte ptr [xc], 1d
-		shl byte ptr [yc], 1d
+		shl byte ptr [xc], 1d  		;cx * 2
+		shl byte ptr [yc], 1d 		;yc * 2
 
 		mov ch, byte ptr [xc]
 		mov cl, byte ptr [yc]
-
 		DEF_COORD_ADDRESS
 
-		mov dx, COLOR_FRAME 	;define color print's symbol
+		mov dx, COLOR_FRAME 		;define color print's symbol
+
+		;define shift to bottom border (in ax)
+		mov al, SIZE_VIDMEM_LINE	;al = 80d
+		mul byte ptr [hp]			;calc shift
+		sub ax, SIZE_VIDMEM_LINE * 2d
+		mov bx, ax      			;change shift
 
 		;---------------------------------------------------------------
 		;draw top border
 		;-----------------------------------------------------------------
-		mov si, 4d		;border top symbol
-		mov dl, frameParam1[si] ;-----------------
-
 		xor cl, cl  ;counter for x coord
 		@@loopXRigt:
+
+			mov si, 4d				;border top symbol
+			mov dl, frameParam1[si] ;-----------------
 			
 			mov word ptr es:[di], dx  ;set in video mem symbol's frame
+
+			mov si, 5d				;border bottopm symbol
+			mov dl, frameParam1[si] ;-----------------
+
+			mov word ptr es:[di + bx], dx  ;set in video mem symbol's frame	
+
 			add di, 2d 				  ;increse di pointer
 
 		add cl, 2d				;cl += 2
@@ -164,16 +175,24 @@ Start:
 		jne @@loopXRigt
 
 
+		mov bx, [wp] 	;change shift
+		sub di, bx 		;shift di by bx
 		;---------------------------------------------------------------
 		;draw right border
 		;-----------------------------------------------------------------
-		mov si, 7d				;border right symbol
-		mov dl, frameParam1[si]	;-------------------
-
 		xor ch, ch  ;free counter for y coord
 		@@loopYDown:
+
+			mov si, 7d				;border right symbol
+			mov dl, frameParam1[si]	;-------------------
 			
 			mov word ptr es:[di], dx  	   ;set in video mem symbol's frame
+			
+			mov si, 6d				;border left symbol
+			mov dl, frameParam1[si] ;-----------------
+			mov word ptr es:[di + bx], dx  ;set in video mem symbol's frame
+
+
 			add di, SIZE_VIDMEM_LINE * 2d  ;increse di pointer
 
 		add ch, 2d 				;ch += 2
@@ -181,36 +200,9 @@ Start:
 		jne @@loopYDown
 
 
-		;---------------------------------------------------------------
-		;draw bottom border
-		;-----------------------------------------------------------------
-		mov si, 5d				;border bottom symbol
-		mov dl, frameParam1[si] ;-------------------
-
-		@@loopXLeft:
-			
-			mov word ptr es:[di], dx  ;set in video mem symbol's frame
-			sub di, 2d 				  ;decrese di pointer
-
-		sub cl, 2 		;cl -= 2
-		cmp cl, 0   	;check out condition 'loopXLeft'
-		jne @@loopXLeft
-
-
-		;---------------------------------------------------------------
-		;draw left border
-		;-----------------------------------------------------------------
-		mov si, 6d				;border left symbol
-		mov dl, frameParam1[si]	;-------------------
-
-		@@loopYUp:
-			
-			mov word ptr es:[di], dx      ;set in video mem symbol's frame
-			sub di, SIZE_VIDMEM_LINE * 2d ;increse di pointer
-
-		sub ch, 2 	;ch -= 2
-		cmp ch, 0 	;check out condition 'loopYUp'
-		jne @@loopYUp
+		mov ch, byte ptr [xc]
+		mov cl, byte ptr [yc]
+		DEF_COORD_ADDRESS
 
 
 		;----------set symbol on upper left crner-----------
@@ -226,6 +218,7 @@ Start:
 		;----------set symbol on lower right crner-----------
 		mov al, SIZE_VIDMEM_LINE	;al = 80d
 		mul byte ptr [hp]			;calc shift
+		sub ax, SIZE_VIDMEM_LINE * 2d
 		add di, ax  				;shift by frame's hight
 
 		DRAW_CH_FROM_ARR frameParam1, 2d
