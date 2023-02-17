@@ -96,11 +96,11 @@ Start:
 
 	SET_MEMADRESS
 
-	push 2d ;argument xc 
+	push 40d ;argument xc 
 	push 2d ;argument yc
 
-	push 20d ;argument wp
-	push 5d ;argument hp		
+	push 30d ;argument wp
+	push 10d ;argument hp		
 
 	call DrawFrame
 
@@ -150,7 +150,7 @@ Start:
 		;---------------------------------------------------------------
 		;draw top border
 		;-----------------------------------------------------------------
-		mov si, 4d				;border top symbol
+		mov si, 4d		;border top symbol
 		mov dl, frameParam1[si] ;-----------------
 
 		xor cl, cl  ;counter for x coord

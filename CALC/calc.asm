@@ -133,29 +133,20 @@ Start:
 	Calc proc
 
 		cmp cl, 0d
-		je @@ComAdd
-		
-		cmp cl, 1d
-		je @@ComSub
-
-		cmp cl, 2d
-		je @@ComMul
-
-		cmp cl, 3d
-		je @@ComDiv		
-
-		jmp @@goToEnd
-
-		@@ComAdd:
+		jne @@ComSub
 			add ax, dx
 			jmp @@goToEnd
 		
-
 		@@ComSub:
+		cmp cl, 1d
+		jne @@ComMul
 			sub ax, dx
 			jmp @@goToEnd
 
+
 		@@ComMul:
+		cmp cl, 2d
+		jne @@ComDiv
 			mul dx
 			jmp @@goToEnd
 
