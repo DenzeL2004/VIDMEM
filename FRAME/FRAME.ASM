@@ -5,7 +5,7 @@ org 100h
 locals @@
 
 
-MIDDLE_SCREEN 	 equ 80d * 2d * 12d + 40d * 2d
+MIDDLE_SCREEN 	 equ 80d * 12d + 40d 
 SIZE_VIDMEM_LINE equ 80d
 VIDMEM_ADR 	  	 equ 0B800h
 
@@ -101,28 +101,6 @@ Start:
 	SET_MEMADRESS
 
 	mov si, START_INPUT_PARAM + 1d ;set pointer to start input arguments
-	
-	;(offset calculation in video memory)
-	call ParceDecNum ;read 1st argument - x coord
-	mov di, bx 		;Save read arguments
-
-	call ParceDecNum ;read 2nd argument - y coord
-	
-	MUL10 		;mul bx by 10
-	shl bx, 3d  ;mul bx by 8
-
-	add di, bx 	;di += bx
-	shl di, 1d  ;mul di by 2
-	;(offset calculation in video memory)
-
-	;(Read hight and width)
-	call ParceDecNum ;read 3th argument - frame's hight
-	push bx 		 ;Save read arguments
-
-	call ParceDecNum ;read 4th argument - frame's width
-	push bx 
-	;(Read hight and width)
-
 
 	;(Read frame's color)
 	call ParceDecNum ;read 5th argument - frame's color
@@ -135,7 +113,6 @@ Start:
 	mov ah, cl 	;save frame's color
 	mov cl, bl  ;save frame's mode
 	;(Read frame's color)
-
 
 	;define frame's sample
 		mov bx, si 	;save the pointer where the string starts
@@ -161,11 +138,38 @@ Start:
 	@@ENDIF:
 	;define frame's sample
 
-	pop cx		;--------------------
-	mov dl, cl  ;restore frame's hight
+	;Get frame's hifht and width
+	push si 	;save address frame's sample
+	mov si, bx  ;addres start string
 
-	pop cx	   	;---------------------
-	mov dh, cl  ;restore frame's width
+	call GetFrameParam 
+
+	pop si ;record address frame's sample
+	;Get frame's hifht and width
+
+	mov cl, dl	;save frame's hight
+	mov ch, dh  ;save frame's width
+
+	;calc di address
+	mov di, MIDDLE_SCREEN * 2d;
+	push bx
+	
+	xor bx, bx
+	mov bl, ch	
+	MUL10	   ;bx * 10
+	shl bx, 3d ;calc number videomem line
+
+	shl bx, 1d ;bx * 2
+
+	add bl, cl   ;shift be x coord
+	and bl, 0FEh ;parity byte
+	sub di, bx; 
+	
+	pop bx
+	;calc di address
+	
+	mov dh, ch
+	mov dl, cl
 
 	push di 	;save di pointer
 
@@ -306,6 +310,47 @@ Start:
 		ret
 
 	PrintToMemory	endp
+
+	;-----------------------------------------------------------------
+	;get string parameters (height and width)
+	;-----------------------------------------------------------------
+	;Entry: si
+	;Exit: dh, dl
+	;Destroy: al, ch, cl
+	;-----------------------------------------------------------------
+	GetFrameParam	proc
+
+		xor dx, dx ;free dx
+		xor ch, ch ;free ch
+		@@next:
+
+			LODSB  ;save byte to al from arguments line
+			inc ch ;counter++
+
+			cmp al, '$' ;check al is '$'
+			je @@break 
+
+			cmp al, '\'		;check symbol al is '\'
+			jne @@next
+				inc dh ;frame's hight++
+				
+				mov cl, ch	
+				xor ch, ch	;free counter
+
+				cmp cl, dl ;check cl > dl, find max 
+				jbe @@next 
+					mov dl, cl
+
+		jmp @@next
+		
+		@@break: 
+
+		add dh, 2d ;frame border
+		add dl, 2d ;frame border
+		
+		ret	
+		
+	GetFrameParam	endp
 
 	;-----------------------------------------------------------------
 	;Parce numbers argument command line (only in decimal representation)
