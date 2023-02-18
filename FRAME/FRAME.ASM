@@ -54,7 +54,7 @@ SET_MEMADRESS	macro
 ;-----------------------------------------------------------------
 ;Entrt: bx (input val)
 ;Exit: bx 
-;Destroy: cx
+;Destroy: dx
 ;-----------------------------------------------------------------
 MUL10		macro
 			NOPE
@@ -259,9 +259,9 @@ Start:
 	;-----------------------------------------------------------------
 	;Assumes: command line arguments ends with $
 	;Assumes: es - destination segment, ds - source segment
-	;Entry: ah(string color)
+	;Entry: ah(start string color)
 	;Exit: none
-	;Destroy: al, di, si
+	;Destroy: ah, al, bx, ch, di, si
 	;-----------------------------------------------------------------
 	PrintToMemory	proc
 		
@@ -272,7 +272,17 @@ Start:
 			je @@goToRet
 
 			STOSW 		;draw cur symbol
-		
+			
+			cmp al, '%' ;check al is '<'
+			jne @@Next
+				sub di, 2d   ;shift di, because '<' was't necessary to write 
+				mov ch, ah   ;save cur color
+				and ch, 0F0h ;delete privios color
+
+				call ParceDecNum ;read new symbols color
+
+				or  ch, bl  ;define new symbols color
+				mov ah, ch	;define new color		
 		jmp @@Next
 
 		@@goToRet:
@@ -287,7 +297,7 @@ Start:
 	;Assumes: si = START_INPUT_Sample
 	;Entry: none
 	;Exit: bx (val)
-	;Destroy: ah, al
+	;Destroy: ah, al, dh
 	;WARNING: if the entry contains characters other than spaces or digits, 
 	;         then when they are found, the function terminates the entire program
 	;-----------------------------------------------------------------
