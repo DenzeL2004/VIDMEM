@@ -135,27 +135,22 @@ Start:
 		cmp cl, 0d
 		jne @@ComSub
 			add ax, dx
-			jmp @@goToEnd
 		
 		@@ComSub:
 		cmp cl, 1d
 		jne @@ComMul
 			sub ax, dx
-			jmp @@goToEnd
 
 
 		@@ComMul:
 		cmp cl, 2d
 		jne @@ComDiv
 			mul dx
-			jmp @@goToEnd
 
 		@@ComDiv:
 			mov cx, dx
 			xor dx, dx
 			div cx
-		
-		@@goToEnd:
 
 		ret
 
