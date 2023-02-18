@@ -261,30 +261,46 @@ Start:
 	;Assumes: es - destination segment, ds - source segment
 	;Entry: ah(start string color)
 	;Exit: none
-	;Destroy: ah, al, bx, ch, di, si
+	;Destroy: ah, al, bx, cl, ch, dh, di, si
 	;-----------------------------------------------------------------
 	PrintToMemory	proc
 		
-		@@Next:
+		xor cl, cl	;free cl
+		@@next:
 			LODSB		;save symbol to al
 
 			cmp al, '$' ;check al is '$'
 			je @@goToRet
 
-			STOSW 		;draw cur symbol
-			
+			cmp al, '\' ;check al is '|'
+			jne @@changeColor
+				xor ch, ch ;free ch
+				sub di, cx ;shift to start line
+
+				add di, SIZE_VIDMEM_LINE * 2d ;next line
+				
+				xor cl, cl ;free cl
+				jmp @@next
+
+
+		@@changeColor:
 			cmp al, '%' ;check al is '<'
-			jne @@Next
-				sub di, 2d   ;shift di, because '<' was't necessary to write 
+			jne @@print
 				mov ch, ah   ;save cur color
 				and ch, 0F0h ;delete privios color
 
 				call ParceDecNum ;read new symbols color
 
 				or  ch, bl  ;define new symbols color
-				mov ah, ch	;define new color		
-		jmp @@Next
+				mov ah, ch	;define new color	
+				jmp @@next
 
+		@@print:
+			STOSW 		;draw cur symbol
+			add cl, 2d	
+		
+		jmp @@next
+		
 		@@goToRet:
 
 		ret
