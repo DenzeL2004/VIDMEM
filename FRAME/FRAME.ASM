@@ -142,7 +142,7 @@ Start:
 
 		cmp cl, 0d  ;check frame's sample = 1
 		jne @@Sample1
-			add bx, 9d		;shift ptr by custom sample 
+			add bx, 10d		;shift ptr by custom sample 
 
 	@@Sample1:		
 		cmp cl, 1d		;check frame's sample = 1
@@ -161,20 +161,29 @@ Start:
 	@@ENDIF:
 	;define frame's sample
 
-	pop bx		;--------------------
-	mov dl, bl  ;restore frame's hight
+	pop cx		;--------------------
+	mov dl, cl  ;restore frame's hight
 
-	pop bx	   	;---------------------
-	mov dh, bl  ;restore frame's width
+	pop cx	   	;---------------------
+	mov dh, cl  ;restore frame's width
+
+	push di 	;save di pointer
 
 	call DrawFrame
+
+	pop di      ;restore frame's width
+	add di, SIZE_VIDMEM_LINE * 2d + 2d ;start address to write message to video memory
+
+	mov si, bx  ;mov si to start message
+
+	call PrintToMemory
 
 	Exit 0
 
 	;-----------------------------------------------------------------
 	;Draw frame in video memory
 	;-----------------------------------------------------------------
-	;Assumes: es = VIDMEM_ADR, ds = sourse sigment
+	;Assumes: es = VIDMEM_ADR, ds = sourse segment
 	;Entry: ah(frame's color) dh (frame's hight), dl (frame's width)
 	;		di (destination index), si (source index)
 	;Exit: none
@@ -244,6 +253,33 @@ Start:
 		ret	
 		
 	DrawLine	endp
+
+	;-----------------------------------------------------------------
+	;writing a string from one segment of memory to another
+	;-----------------------------------------------------------------
+	;Assumes: command line arguments ends with $
+	;Assumes: es - destination segment, ds - source segment
+	;Entry: ah(string color)
+	;Exit: none
+	;Destroy: al, di, si
+	;-----------------------------------------------------------------
+	PrintToMemory	proc
+		
+		@@Next:
+			LODSB		;save symbol to al
+
+			cmp al, '$' ;check al is '$'
+			je @@goToRet
+
+			STOSW 		;draw cur symbol
+		
+		jmp @@Next
+
+		@@goToRet:
+
+		ret
+
+	PrintToMemory	endp
 
 	;-----------------------------------------------------------------
 	;Parce numbers argument command line (only in decimal representation)
