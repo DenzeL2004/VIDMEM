@@ -5,8 +5,8 @@ org 100h
 locals @@
 
 
-MIDDLE_SCREEN 	 equ 80d * 12d + 40d 
-SIZE_VIDMEM_LINE equ 80d
+MIDDLE_SCREEN 	 equ 80d * 12d + 40d
+WIDTH_LENGTH equ 80d
 VIDMEM_ADR 	  	 equ 0B800h
 
 START_INPUT_PARAM equ 0080h
@@ -40,7 +40,7 @@ Exit	macro code
 ;Destroy: di
 ;-----------------------------------------------------------------
 
-SET_MEMADRESS	macro
+SET_ES_VIDEOMEM	macro
 				NOPE
 
 				mov di, VIDMEM_ADR		;video memory address
@@ -56,7 +56,7 @@ SET_MEMADRESS	macro
 ;Exit: bx 
 ;Destroy: dx
 ;-----------------------------------------------------------------
-MUL10		macro
+MUL10BX		macro
 			NOPE
 
 			mov dx, bx 	;save bx val
@@ -69,166 +69,138 @@ MUL10		macro
 			NOPE
 			endm
 
-
-;-----------------------------------------------------------------
-;Define vide address by coord
-;-----------------------------------------------------------------
-;Entrt: cx (ch:cl = xCoord:yCoord)
-;Exit: di (video mem address)
-;Destroy: ax (after ah:al = 00:00)
-;-----------------------------------------------------------------
-
-DEF_COORD_ADDRESS	macro
-					NOPE
-
-					mov al, SIZE_VIDMEM_LINE	;al = 80d
-					mul cl						;shift by coord y
-
-					mov di, ax  				;save start line video mem addres to di
-
-					xor ax, ax
-					mov al, ch
-
-					add di, ax				;shift addres to coord x
-				
-					xor ax, ax					;clear ah:al = 00:00
-					
-					NOPE
-					endm
-
 Start:
 	
-	SET_MEMADRESS
+	SET_ES_VIDEOMEM
 
 	mov si, START_INPUT_PARAM + 1d ;set pointer to start input arguments
+	call ParceInputArguments
 
-	;(Read frame's color)
-	call ParceDecNum ;read 5th argument - frame's color
-	mov cx, bx 		 ;Save read arguments
-	;(Read frame's color)
-
-	;(Read frame's mode)
-	call ParceDecNum ;read 5th argument - frame's color
-
-	mov ah, cl 	;save frame's color
-	mov cl, bl  ;save frame's mode
-	;(Read frame's color)
-
-	;define frame's sample
-		mov bx, si 	;save the pointer where the string starts
-
-		cmp cl, 0d  ;check frame's sample = 1
-		jne @@Sample1
-			add bx, 10d		;shift ptr by custom sample 
-
-	@@Sample1:		
-		cmp cl, 1d		;check frame's sample = 1
-		jne @@Sample2	
-			mov si, offset frameSample1
-
-	@@Sample2:
-		cmp cl, 2d		;check frame's sample = 2
-		jne @@Sample3
-			mov si, offset frameSample2
-
-	@@Sample3:		
-		cmp cl, 3d		;check frame's sample = 3
-		jne @@ENDIF
-			mov si, offset frameSample3
-	@@ENDIF:
-	;define frame's sample
-
-	;Get frame's hifht and width
-	push si 	;save address frame's sample
-	mov si, bx  ;addres start string
-
+	;Get frame's hight and width
+	mov si, message_address_start  ;addres start string
 	call GetFrameParam 
 
-	pop si ;record address frame's sample
-	;Get frame's hifht and width
-
-	mov cl, dl	;save frame's hight
-	mov ch, dh  ;save frame's width
-
-	;calc di address
-	mov di, MIDDLE_SCREEN * 2d;
-	push bx
+	call CalcFrameAddres
 	
-	xor bx, bx
-	mov bl, ch	
-	MUL10	   ;bx * 10
-	shl bx, 3d ;calc number videomem line
+	mov di, frame_addres_in_vidmem
 
-	shl bx, 1d ;bx * 2
+	mov dh, frame_hight
+	mov dl, frame_width	
 
-	add bl, cl   ;shift be x coord
-	and bl, 0FEh ;parity byte
-	sub di, bx; 
-	
-	pop bx
-	;calc di address
-	
-	mov dh, ch
-	mov dl, cl
-
-	push di 	;save di pointer
-
+	push dx				;frame's hight and width
+	push frame_sample 	;frame's sample 
+	push frame_color	;frame's color
 	call DrawFrame
 
-	pop di      ;restore frame's width
-	add di, SIZE_VIDMEM_LINE * 2d + 2d ;start address to write message to video memory
+	mov di, frame_addres_in_vidmem ;restore frame's address
+	add di, WIDTH_LENGTH * 2d + 2d ;start address to write message in frame
 
-	mov si, bx  ;mov si to start message
+	mov si, message_address_start
 
 	call PrintToMemory
 
 	Exit 0
 
 	;-----------------------------------------------------------------
+	;Get the arguments of the command line
+	;-----------------------------------------------------------------
+	;Assumes: si = start addres input arguments
+	;Entry: none
+	;Exit: frame_color, frame_sample message_address_start
+	;Destroy: ax, bx, cx, dx, si, di
+	;-----------------------------------------------------------------
+	ParceInputArguments proc
+
+		;(Read frame's color)
+		call ParceDecNum 	  ;frame's color
+		mov frame_color, bx   ;Save read arguments
+		;(Read frame's color)
+
+		;(Read frame's mosamplede)
+		call ParceDecNum 	  ;read frame's sample
+		mov frame_sample, bx  ;save frame's sample
+		;(Read frame's color)
+
+		;define frame's sample
+		mov message_address_start, si 	;save the address where the string starts
+
+		cmp frame_sample, 0d  ;check frame's sample = 0
+		jne @@else
+			mov frame_sample, si
+			add message_address_start, 10d ;shift to start string address
+			jmp @@endif
+
+		@@else:	;installings samples
+			dec frame_sample
+			mov bx, frame_sample
+			
+			mov al, 09d
+			mul bl		 ;calc sample's shift
+			xchg ax, bx 
+
+			add bx, offset frameSample1 ;set sample
+
+			mov frame_sample, bx
+
+		@@endif:
+		;define frame's sample
+		
+		ret
+	ParceInputArguments endp
+
+	;-----------------------------------------------------------------
 	;Draw frame in video memory
 	;-----------------------------------------------------------------
+	;Param: [bp + 4] - frame's color, [bp + 6] - frame's sample
+	;		[bp + 8] - frame's width, [bp + 9] - frame's highth
 	;Assumes: es = VIDMEM_ADR, ds = sourse segment
-	;Entry: ah(frame's color) dh (frame's hight), dl (frame's width)
-	;		di (destination index), si (source index)
+	;Entry: di (destination index), si (source index)
 	;Exit: none
-	;Destroy: ax, ch, cl, dh, dl, di, si
+	;Destroy: ax, ch, cl, di, si
 	;-----------------------------------------------------------------
 	DrawFrame	proc
+		push bp
+		mov bp, sp
+		
+		mov ah, byte ptr [bp + 4] ;define frame's color
+		mov si, word ptr [bp + 6] ;define frame's color
+
 		xor cx, cx 	;free cx
 
-		mov cl, dl 	;cx = width
+		mov cl, byte ptr [bp + 8] 	;cx = widthGetFrameParam
 		call DrawLine
 
-		mov cl, dl	;expansion to word
+		mov cl, byte ptr [bp + 8]	;expansion to word
 		shl cl, 1d  ;change shift
 
 		sub di, cx	;return di to start line
-		add di, SIZE_VIDMEM_LINE * 2d ;next line
+		add di, WIDTH_LENGTH * 2d ;next line
 
-		sub dh, 2d 	;dh -= 2
+		sub byte ptr [bp + 9], 2d 	;hight -= 2
 
 		@@next:
-			mov cl, dl 	;cx = width
+			mov cl, byte ptr [bp + 8] 	;cx = width
 			call DrawLine
 		
 			sub si, 3d	;return si to cur 3 sybmbols
 
-			mov cl, dl	;expansion to word
+			mov cl, byte ptr [bp + 8]	;expansion to word
 			shl cl, 1d  ;change shift
 			
 			sub di, cx	;return di to start line
-			add di, SIZE_VIDMEM_LINE * 2d ;next line
+			add di, WIDTH_LENGTH * 2d ;next line
 			
-		dec dh 		;dh--
-		cmp dh, 0d	;-----------------------
+		dec byte ptr [bp + 9] 		;hight--
+		cmp byte ptr [bp + 9], 0d	;-----------------------
 		jne @@next  ;check condition вр != 0
 		
 		add si, 3d  ;next three symbol
 
-		mov cl, dl 	;cx = width
+		mov cl, byte ptr [bp + 8] 	;cx = width
 		call DrawLine
 
-		ret
+		pop bp
+		ret 2d * 3d
 		
 	DrawFrame	endp
 
@@ -244,15 +216,15 @@ Start:
 
 		cld 		;DF = 0
 
-		LODSB		;save symbol to al
-		STOSW 		;draw left symbol
+		lodsb		;save symbol to al
+		stosw 		;draw left symbol
 
 		sub cx, 2d	;counter -= 2	
-		LODSB		;save symbol to al
-		rep STOSW 	;draw middle symbol
+		lodsb		;save symbol to al
+		rep stosw 	;draw middle symbol
 
-		LODSB		;save symbol to al
-		STOSW 		;draw right symbol
+		lodsb		;save symbol to al
+		stosw 		;draw right symbol
 
 		ret	
 		
@@ -276,12 +248,12 @@ Start:
 			cmp al, '$' ;check al is '$'
 			je @@goToRet
 
-			cmp al, '\' ;check al is '|'
+			cmp al, '\' ;check al is '\'
 			jne @@changeColor
 				xor ch, ch ;free ch
 				sub di, cx ;shift to start line
 
-				add di, SIZE_VIDMEM_LINE * 2d ;next line
+				add di, WIDTH_LENGTH * 2d ;next line
 				
 				xor cl, cl ;free cl
 				jmp @@next
@@ -315,16 +287,17 @@ Start:
 	;get string parameters (height and width)
 	;-----------------------------------------------------------------
 	;Entry: si
-	;Exit: dh, dl
+	;Exit: frame_width, frame_hight
 	;Destroy: al, ch, cl
 	;-----------------------------------------------------------------
 	GetFrameParam	proc
-
-		xor dx, dx ;free dx
+		mov frame_hight, 0 ;free frame's hight
+		mov frame_width, 0 ;free frame's width
+		
 		xor ch, ch ;free ch
 		@@next:
 
-			LODSB  ;save byte to al from arguments line
+			lodsb  ;save byte to al from arguments line
 			inc ch ;counter++
 
 			cmp al, '$' ;check al is '$'
@@ -332,25 +305,50 @@ Start:
 
 			cmp al, '\'		;check symbol al is '\'
 			jne @@next
-				inc dh ;frame's hight++
+				inc frame_hight ;frame's hight++
 				
 				mov cl, ch	
 				xor ch, ch	;free counter
 
-				cmp cl, dl ;check cl > dl, find max 
+				cmp cl, frame_width ;check cur_width < max_width (find max width).
 				jbe @@next 
-					mov dl, cl
+					mov frame_width, cl
 
 		jmp @@next
 		
 		@@break: 
 
-		add dh, 2d ;frame border
-		add dl, 2d ;frame border
-		
+		add frame_hight, 2d ;frame border
+		add frame_width, 2d ;frame border
+
 		ret	
 		
 	GetFrameParam	endp
+
+	;-----------------------------------------------------------------
+	;Calc frames addres in vidmem
+	;-----------------------------------------------------------------
+	;Assume: frame_hight, frame_width
+	;Entry: si
+	;Exit: frame_width, frame_hight
+	;Destroy: bx
+	;-----------------------------------------------------------------
+	CalcFrameAddres	proc
+		mov frame_addres_in_vidmem, MIDDLE_SCREEN * 2d;
+	
+		xor bx, bx
+		mov bl, frame_hight	;shift by y coord
+		MUL10BX	   ;bx * 10
+		shl bx, 3d ;calc number videomem line
+		shl bx, 1d
+		
+		add bl, frame_width ;shift by x coord
+		and bx, 0FFFEh		;parity byte
+		sub frame_addres_in_vidmem, bx; 
+	
+		ret	
+		
+	CalcFrameAddres	endp
 
 	;-----------------------------------------------------------------
 	;Parce numbers argument command line (only in decimal representation)
@@ -382,7 +380,7 @@ Start:
 			
 			sub al, '0'		;al - ascii('0')
 
-			MUL10 		;bx * 10
+			MUL10BX 		;bx * 10
 			add bl, al 	;add cur symbol
 
 			mov ah, 9d		;ah = 9
@@ -415,7 +413,7 @@ Start:
 
 		@@isSpace:
 
-			LODSB ;save byte to al from arguments line
+			lodsb ;save byte to al from arguments line
 
 		cmp al, ' ' 	;check condition al == ' '
  		je @@isSpace	
@@ -429,6 +427,16 @@ Start:
 		
 	SkipSpace	endp
 
+
+.data 
+	frame_width db 0
+	frame_hight db 0
+
+	frame_color  dw 0
+	frame_sample dw 0
+
+	message_address_start  dw 0
+	frame_addres_in_vidmem dw 0
 
 .const 
 frameSample1 db 0dah, 0c4h, 0bfh, 0c3h, 20h, 0b4h, 0c0h, 0c4h, 0d9h  ;patern for frame
