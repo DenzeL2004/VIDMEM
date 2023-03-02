@@ -26,7 +26,7 @@ NOPE equ nop
 Exit	macro code
 		NOPE
 
-		mov AX, 4c00h or code
+		mov ax, 4c00h or code
 		int 21h		
 
 		NOPE
@@ -163,7 +163,7 @@ Start:
 		mov bp, sp
 		
 		mov ah, byte ptr [bp + 4] ;define frame's color
-		mov si, word ptr [bp + 6] ;define frame's color
+		mov si, word ptr [bp + 6] ;define frame's sample
 
 		xor cx, cx 	;free cx
 
